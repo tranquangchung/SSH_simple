@@ -1,5 +1,10 @@
 import socket, threading
 from subprocess import Popen, PIPE
+import time
+from queueMessage import *
+
+recvMessage = RecvMessage()
+sendMessage = SendMessage()
 
 fname="username"
 username = []
@@ -12,16 +17,24 @@ class ClientThread(threading.Thread):
         threading.Thread.__init__(self)
         self.clientsocket = clientsocket
         print("New connection added: ", clientAddress)
+        self.recvMessage = RecvMessage()
+        self.sendMessage = SendMessage()
+
 
     def run(self):
         print("Connection from : ", clientAddress)
-        self.clientsocket.sendall("Connecting".encode('UTF-8'))
+        message = "connecting"
+        self.sendMessage.put(message)
+        self.clientsocket.sendall(self.sendMessage.get())
+
         while True:
-            message = self.clientsocket.recv(2048).decode('UTF-8')
+            self.recvMessage.put(self.clientsocket.recv(2048))
+            message = self.recvMessage.get()
             cmd = message.split()
             popen = Popen(cmd, stdout=PIPE)
             out, err = popen.communicate()
-            self.clientsocket.sendall(out)
+            self.sendMessage.put(out)
+            self.clientsocket.sendall(self.sendMessage.get())
 
 
 LOCALHOST = "127.0.0.1"
@@ -36,20 +49,28 @@ while True:
     clientsocket, clientAddress = server.accept()
 
     # check login
-    user = clientsocket.recv(2048).decode('UTF-8')
+    recvMessage.put(clientsocket.recv(2048))
+    user = recvMessage.get()
     for u in username:
         if user == u[0]:
             # return flag_user = TRUE
             flag_user="TRUE"
-            clientsocket.sendall(flag_user.encode('UTF-8'))
+            sendMessage.put(flag_user)
+            clientsocket.sendall(sendMessage.get())
             while True:
                 # check password
-                clientsocket.sendall("Password: ".encode('UTF-8'))
-                password = clientsocket.recv(2048).decode('UTF-8')
+                pw = "Password: "
+                sendMessage.put(pw)
+                clientsocket.sendall(sendMessage.get())
+
+                recvMessage.put(clientsocket.recv(2048))
+                password = recvMessage.get()
+
                 if password == u[1]:
                     # return flag_pass = TRUE
                     flag_pass = "TRUE"
-                    clientsocket.sendall(flag_pass.encode('UTF-8'))
+                    sendMessage.put(flag_pass)
+                    clientsocket.sendall(sendMessage.get())
                     newthread = ClientThread(clientAddress, clientsocket)
                     newthread.start()
                     break

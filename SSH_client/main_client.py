@@ -1,5 +1,10 @@
 import socket
-import sys
+import sys, os
+from queueMessage import *
+
+recvMessage = RecvMessage()
+sendMessage = SendMessage()
+
 
 # Login
 try:
@@ -17,25 +22,40 @@ serversocket.connect(server_address)
 
 try:
     # check user
-    message = str(user).encode('UTF-8')
-    serversocket.sendall(message)
-    flag_user = serversocket.recv(2048).decode('UTF-8')
+    message = str(user)
+    sendMessage.put(message)
+    serversocket.sendall(sendMessage.get())
+
+    recvMessage.put(serversocket.recv(2048))
+    flag_user = recvMessage.get()
+
     if flag_user == "TRUE":
         # check password
         while True:
-            message = serversocket.recv(2048).decode('UTF-8')
+            recvMessage.put(serversocket.recv(2048))
+            message = recvMessage.get()
             password = input(message)
-            serversocket.sendall(password.encode('UTF-8'))
-            flag_pass = serversocket.recv(2048).decode('UTF-8')
+
+            sendMessage.put(password)
+            serversocket.sendall(sendMessage.get())
+
+            recvMessage.put(serversocket.recv(2048))
+            flag_pass = recvMessage.get()
             if flag_pass == "TRUE":
                 # Start Connection
-                message = serversocket.recv(2048).decode('UTF-8')
+                recvMessage.put(serversocket.recv(2048))
+                message = recvMessage.get()
                 print(message)
+
+                # Start communication
                 while True:
                     message = input("Enter command:")
-                    serversocket.sendall(message.encode('UTF-8'))
-                    message = serversocket.recv(2048)
-                    print(message.decode('UTF-8'))
+                    sendMessage.put(message)
+                    serversocket.sendall(sendMessage.get())
+
+                    recvMessage.put(serversocket.recv(2048))
+                    message = recvMessage.get()
+                    print(message)
     else:
         print("Wrong username")
 finally:
