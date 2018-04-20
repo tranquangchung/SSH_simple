@@ -36,14 +36,6 @@
 # foo(x,y)
 # print(a,b,x,y)
 
-class A():
-    def __init__(self):
-        pass
-class B():
-    def __init__(self):
-        b = A()
-
-
-for i in range(0,10):
-    b = B()
-print('--')
+s = "  \t a string example\t  "
+s = s.strip()
+print(s)

@@ -26,38 +26,29 @@ try:
     sendMessage.put(message)
     serversocket.sendall(sendMessage.get())
 
-    recvMessage.put(serversocket.recv(2048))
-    flag_user = recvMessage.get()
-
-    if flag_user == "TRUE":
-        # check password
-        while True:
-            recvMessage.put(serversocket.recv(2048))
-            message = recvMessage.get()
+    while True:
+        recvMessage.put(serversocket.recv(2048))
+        message = recvMessage.get()
+        if message == "Password: ":
             password = input(message)
-
             sendMessage.put(password)
             serversocket.sendall(sendMessage.get())
+        if message == "Connect":
+            # Start communication
+            print("Connecting to Server")
+            while True:
+                message = input("Enter command:")
+                sendMessage.put(message)
+                serversocket.sendall(sendMessage.get())
 
-            recvMessage.put(serversocket.recv(2048))
-            flag_pass = recvMessage.get()
-            if flag_pass == "TRUE":
-                # Start Connection
                 recvMessage.put(serversocket.recv(2048))
                 message = recvMessage.get()
-                print(message)
-
-                # Start communication
-                while True:
-                    message = input("Enter command:")
-                    sendMessage.put(message)
-                    serversocket.sendall(sendMessage.get())
-
-                    recvMessage.put(serversocket.recv(2048))
-                    message = recvMessage.get()
+                if message == "disconnection":
+                    exit()
+                else:
                     print(message)
-    else:
-        print("Wrong username")
+        if message == "Many trial":
+            print("exceeded the number of attempts to login")
+            exit()
 finally:
-    print('closing socket')
     serversocket.close()

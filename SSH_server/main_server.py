@@ -2,39 +2,92 @@ import socket, threading
 from subprocess import Popen, PIPE
 import time
 from queueMessage import *
+from cml import *
 
 recvMessage = RecvMessage()
 sendMessage = SendMessage()
 
 fname="username"
 username = []
+threads = []
+N_connection = 2
+
 with open(fname, 'r') as f:
     for user in f:
         username.append(user.split())
 
 class ClientThread(threading.Thread):
-    def __init__(self, clientAddress, clientsocket):
+    def __init__(self, clientAddress, clientsocket, username):
         threading.Thread.__init__(self)
         self.clientsocket = clientsocket
-        print("New connection added: ", clientAddress)
+        # print("New connection added: ", clientAddress)
         self.recvMessage = RecvMessage()
         self.sendMessage = SendMessage()
+        self.username = username
+        self.cmd = CommandLine()
 
+    def checkLogin(self):
+        self.recvMessage.put(self.clientsocket.recv(2048))
+        user = self.recvMessage.get()
+        for u in self.username:
+            if user == u[0]:
+                trial_password = 0
+                while True:
+                    # check password
+                    pw = "Password: "
+                    self.sendMessage.put(pw)
+                    self.clientsocket.sendall(self.sendMessage.get())
+
+                    self.recvMessage.put(self.clientsocket.recv(2048))
+                    password = self.recvMessage.get()
+                    if password == u[1]:
+                        # return flag_connection = Connect
+                        flag_connection = "Connect"
+                        self.sendMessage.put(flag_connection)
+                        self.clientsocket.sendall(self.sendMessage.get())
+                        return True
+                    if trial_password == 5:
+                        # return attempt = ""
+                        flag_trial = "Many trial"
+                        self.sendMessage.put(flag_trial)
+                        self.clientsocket.sendall(self.sendMessage.get())
+                        return False
+                    trial_password += 1
+        return False
 
     def run(self):
-        print("Connection from : ", clientAddress)
-        message = "connecting"
-        self.sendMessage.put(message)
-        self.clientsocket.sendall(self.sendMessage.get())
+        if self.checkLogin():
+            print("Connection from :", clientAddress)
+            while True:
+                self.recvMessage.put(self.clientsocket.recv(2048))
+                message = self.recvMessage.get()
+                if message != "exit":
+                    respond = self.cmd.parse_command(message)
+                    self.sendMessage.put(respond)
+                    self.clientsocket.sendall(self.sendMessage.get())
+                else:
+                    # disconnect this thread
+                    respond = "disconnection"
+                    self.sendMessage.put(respond)
+                    self.clientsocket.sendall(self.sendMessage.get())
+                    break
 
-        while True:
-            self.recvMessage.put(self.clientsocket.recv(2048))
-            message = self.recvMessage.get()
-            cmd = message.split()
-            popen = Popen(cmd, stdout=PIPE)
-            out, err = popen.communicate()
-            self.sendMessage.put(out)
-            self.clientsocket.sendall(self.sendMessage.get())
+    def close(self):
+        self.clientsocket.close()
+        print("Disconnection from :", clientAddress)
+
+def isalive():
+    """
+    check thread is alive or die
+    if die then remove this thead out of theads
+    :return:
+    """
+    global threads
+    for thread in threads:
+        if not thread.isAlive():
+            thread.close()
+            threads.remove(thread)
+
 
 
 LOCALHOST = "127.0.0.1"
@@ -44,33 +97,12 @@ server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind((LOCALHOST, PORT))
 print("Server started")
 print("Waiting for client request..")
+
 while True:
-    server.listen(1)
-    clientsocket, clientAddress = server.accept()
-
-    # check login
-    recvMessage.put(clientsocket.recv(2048))
-    user = recvMessage.get()
-    for u in username:
-        if user == u[0]:
-            # return flag_user = TRUE
-            flag_user="TRUE"
-            sendMessage.put(flag_user)
-            clientsocket.sendall(sendMessage.get())
-            while True:
-                # check password
-                pw = "Password: "
-                sendMessage.put(pw)
-                clientsocket.sendall(sendMessage.get())
-
-                recvMessage.put(clientsocket.recv(2048))
-                password = recvMessage.get()
-
-                if password == u[1]:
-                    # return flag_pass = TRUE
-                    flag_pass = "TRUE"
-                    sendMessage.put(flag_pass)
-                    clientsocket.sendall(sendMessage.get())
-                    newthread = ClientThread(clientAddress, clientsocket)
-                    newthread.start()
-                    break
+    if len(threads) < N_connection:
+        server.listen(1)
+        clientsocket, clientAddress = server.accept()
+        newthread = ClientThread(clientAddress, clientsocket, username)
+        newthread.start()
+        threads.append(newthread)
+    isalive()
