@@ -1,10 +1,11 @@
 import socket
 import sys, os
 from queueMessage import *
+import json
 
 recvMessage = RecvMessage()
 sendMessage = SendMessage()
-
+import json
 
 # Login
 try:
@@ -29,25 +30,29 @@ try:
     while True:
         recvMessage.put(serversocket.recv(2048))
         message = recvMessage.get()
-        if message == "Password: ":
-            password = input(message)
+        message = json.loads(message)
+        if message['state'] == "Password":
+            tmp = message['state'] + ': '
+            password = input(tmp)
             sendMessage.put(password)
             serversocket.sendall(sendMessage.get())
-        if message == "Connect":
+        if message['state'] == "Connect":
             # Start communication
             print("Connecting to Server")
             while True:
-                message = input("Enter command:")
-                sendMessage.put(message)
+                cwd = message["cwd"] + ": "
+                cmd = input(cwd)
+                sendMessage.put(cmd)
                 serversocket.sendall(sendMessage.get())
 
                 recvMessage.put(serversocket.recv(2048))
-                message = recvMessage.get()
-                if message == "disconnection":
+                cmd = recvMessage.get()
+                cmd = json.loads(cmd)
+                if cmd == "disconnection":
                     exit()
                 else:
-                    print(message)
-        if message == "Many trial":
+                    print(cmd)
+        if message['state'] == "Many trial":
             print("exceeded the number of attempts to login")
             exit()
 finally:

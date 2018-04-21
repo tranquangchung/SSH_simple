@@ -3,6 +3,7 @@ from subprocess import Popen, PIPE
 import time
 from queueMessage import *
 from cml import *
+import os
 
 recvMessage = RecvMessage()
 sendMessage = SendMessage()
@@ -24,7 +25,8 @@ class ClientThread(threading.Thread):
         self.recvMessage = RecvMessage()
         self.sendMessage = SendMessage()
         self.username = username
-        self.cmd = CommandLine()
+        self.cwd = [os.getcwd()] #current working directory
+        self.cmd = CommandLine(self.cwd)
 
     def checkLogin(self):
         self.recvMessage.put(self.clientsocket.recv(2048))
@@ -34,22 +36,20 @@ class ClientThread(threading.Thread):
                 trial_password = 0
                 while True:
                     # check password
-                    pw = "Password: "
-                    self.sendMessage.put(pw)
+                    message = '{"state": "Password", "cwd": "None"}'
+                    self.sendMessage.put(message)
                     self.clientsocket.sendall(self.sendMessage.get())
 
                     self.recvMessage.put(self.clientsocket.recv(2048))
                     password = self.recvMessage.get()
                     if password == u[1]:
-                        # return flag_connection = Connect
-                        flag_connection = "Connect"
-                        self.sendMessage.put(flag_connection)
+                        message = '{{"state": "Connect", "cwd": "{0}"}}'.format(self.cwd[0])
+                        self.sendMessage.put(message)
                         self.clientsocket.sendall(self.sendMessage.get())
                         return True
                     if trial_password == 5:
-                        # return attempt = ""
-                        flag_trial = "Many trial"
-                        self.sendMessage.put(flag_trial)
+                        message = '{"state": "Many trial", "cwd": "None"}'
+                        self.sendMessage.put(message)
                         self.clientsocket.sendall(self.sendMessage.get())
                         return False
                     trial_password += 1
