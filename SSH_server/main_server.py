@@ -67,7 +67,7 @@ class ClientThread(threading.Thread):
                     self.clientsocket.sendall(self.sendMessage.get())
                 else:
                     # disconnect this thread
-                    respond = "disconnection"
+                    respond = '{"state": "disconnection"}'
                     self.sendMessage.put(respond)
                     self.clientsocket.sendall(self.sendMessage.get())
                     break

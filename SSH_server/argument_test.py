@@ -9,4 +9,18 @@
 # print(out)
 # import subprocess
 # a = subprocess.call('cd ..', shell=True)
-# print(a)
+# print(a
+
+import shutil
+import os
+shutil.move("username5", "..")
+
+# a = os.path.isfile("username4")
+# b = os.path.isdir("username4")
+# print('--')
+
+# os.remove() will remove a file.
+#
+# os.rmdir() will remove an empty directory.
+#
+# shutil.rmtree() will delete a directory and all its contents.

@@ -9,8 +9,8 @@ import json
 
 # Login
 try:
-    # name_address = sys.argv[1]
-    name_address = 'admin@127.0.0.1'
+    name_address = sys.argv[1]
+    # name_address = 'admin@127.0.0.1'
 except:
     print("Please enter address server")
 
@@ -33,25 +33,48 @@ try:
         message = json.loads(message)
         if message['state'] == "Password":
             tmp = message['state'] + ': '
-            password = input(tmp)
+            while True:
+                password = input(tmp)
+                if password != "":
+                    break
             sendMessage.put(password)
             serversocket.sendall(sendMessage.get())
         if message['state'] == "Connect":
             # Start communication
             print("Connecting to Server")
+            cwd = message["cwd"] + ": "
             while True:
-                cwd = message["cwd"] + ": "
-                cmd = input(cwd)
+                while True:
+                    cmd = input(cwd)
+                    if cmd != "":
+                        break
                 sendMessage.put(cmd)
                 serversocket.sendall(sendMessage.get())
 
                 recvMessage.put(serversocket.recv(2048))
                 cmd = recvMessage.get()
                 cmd = json.loads(cmd)
-                if cmd == "disconnection":
-                    exit()
-                else:
-                    print(cmd)
+                try:
+                    if cmd["cwd"] != "None":
+                        if cmd["cwd"] == "Not a directory":
+                            print(cmd["cwd"])
+                        else:
+                            cwd = cmd["cwd"] + ": "
+                            continue
+                except:
+                    pass
+
+                try:
+                    if cmd["state"] == "disconnection":
+                        os._exit(0)
+                except:
+                    pass
+
+                try:
+                    if cmd["data"] != "None":
+                        print(cmd["data"])
+                except:
+                    pass
         if message['state'] == "Many trial":
             print("exceeded the number of attempts to login")
             exit()
